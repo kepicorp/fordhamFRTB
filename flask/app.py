@@ -21,6 +21,8 @@ def login():
         session['token'] = str(json.loads(resp.text)['access_token'])
     else:
         session['token'] = resp.text[13:49]
+
+    #print(session['token'])
     return redirect(url_for('compute'))
 
 @app.route('/logout')
@@ -43,7 +45,12 @@ def testcube():
 def testreports():
     if 'token' in session:
         headers = {"Authorization": "Bearer "+get_token(), "content-type": "application/json"}
-        req = requests.get(api+'dynamic/v1/reports',headers=headers)
+        if config.deprecatedreports:
+            # old method to list reports
+            #print('using old reports at '+api+'dynamic/report')
+            req = requests.get(api+'dynamic/report',headers=headers)
+        else:
+            req = requests.get(api+'dynamic/v1/reports',headers=headers)
         return str(req.text)
     return 'You must login first'
 
@@ -78,8 +85,15 @@ def importCube(data, name='testPython'):
 
 def createReport(name='testPython'): 
     headers = {"Authorization": "Bearer "+get_token(), "content-type": "application/json"}
-    data = {'name': name, 'cube': name}
-    req = requests.post(api+'dynamic/v1/reports/createFromCube', json=data, headers=headers)
+    if config.deprecatedreports:
+        # Using old method for report creation
+        #print('using old reports at '+api+'dynamic/report/'+name)
+        req = requests.post(api+'dynamic/report/'+name, headers=headers, json={})
+    else:
+        # Using new method for report creation
+        data = {'name': name, 'cube': name}
+        req = requests.post(api+'dynamic/v1/reports/createFromCube', json=data, headers=headers)
+
     if req.status_code == requests.codes.ok:
         return str(req.text)
     return 'Failed to import error '+str(req.status_code)+' with '+req.text
